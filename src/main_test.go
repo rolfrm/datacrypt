@@ -216,6 +216,64 @@ func TestDemoEncryption(t * testing.T){
 	
 	os.Remove(iname)
 	os.Remove(oname)
-	os.Remove(oname2)
+	os.Remove(oname2)	
+}
+
+
+
+func TestDemoEncryption2(t * testing.T){
+	iname := "to_encrypt.bin"
+	oname := "encrypted.bin"
+	oname2 := "decrypted.bin"
 	
+	data,_ := iou.ReadFile("./main_test.go")
+	
+	iou.WriteFile(iname, data, 0777)
+	key := "Hello"
+	{ // write to file
+		inFile, err := os.Open(iname)
+
+		if err != nil {
+			panic(err)
+		}
+		outFile, err := os.OpenFile(oname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			panic(err)
+		}
+		compressed := CompressionWriter(outFile, key);
+		if _, err := io.Copy(compressed, inFile); err != nil {
+			panic(err)
+		}
+		compressed.Close()
+		outFile.Close()
+		inFile.Close()
+	}
+
+	{ // read from file
+		inFile, err := os.Open(oname)
+		
+		if err != nil {
+			panic(err)
+		}
+		outFile, err := os.OpenFile(oname2, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			panic(err)
+		}
+		decompressed := CompressionReader(inFile, key)
+		if _, err := io.Copy(outFile, decompressed); err != nil {
+			panic(err)
+		}
+		decompressed.Close()
+		outFile.Close()
+		inFile.Close()
+
+	}
+	decompressedData,_ := iou.ReadFile(oname2);
+	if bytes.Equal(decompressedData, data) == false {
+		t.Errorf("input and output not the same %v %v", decompressedData, data)
+	}
+	
+	os.Remove(iname)
+	os.Remove(oname)
+	os.Remove(oname2)	
 }

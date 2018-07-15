@@ -88,7 +88,7 @@ func cachedFileData(dc * datacrypt, filename string) filedata {
 	dec := gob.NewDecoder(ofile);
 
 	var out filedata
-	if nil == dec.Decode(&out) {
+	if nil != dec.Decode(&out) {
 		return filedata{};
 	}
 	return out;
@@ -234,10 +234,12 @@ func dataCryptRegister(dc *datacrypt, thing filedata){
 	
 	if err == nil {
 		if (fi.Size == thing.size) && (fi.Modification_time == thing.modification_time){
-			return;
-			
+			return; // same as is already known
 		}		
 	}
+	// thing does not exist in db, or only old version exists
+	
+	
 	
 		
 }
