@@ -7,7 +7,7 @@ import "crypto/aes"
 import "crypto/sha256"
 import "io"
 import "crypto/cipher"
-import "compress/lzw"
+import compress "compress/zlib"
 import "bytes"
 func Test1(t *testing.T){
 	
@@ -148,24 +148,21 @@ func TestDemoEncryption(t * testing.T){
 	oname := "encrypted.bin"
 	oname2 := "decrypted.bin"
 	
-	data,_ := iou.ReadFile("./src")//make([]byte, 1000)
-	//data[100] = 5
-	//data[200] = 5
-	//data[300] = 5
+	data,_ := iou.ReadFile("./main_test.go")
 	
 	iou.WriteFile(iname, data, 0777)
-
 		
 	hsh := sha256.New()
 	io.WriteString(hsh, "hello")
 	cryptkey := hsh.Sum(nil)
 
+	block, err := aes.NewCipher(cryptkey)
+	if err != nil {
+		panic(err)
+	}
+	
 	{ // write to file
 		inFile, err := os.Open(iname)
-		if err != nil {
-			panic(err)
-		}
-		block, err := aes.NewCipher(cryptkey)
 		if err != nil {
 			panic(err)
 		}
@@ -179,7 +176,7 @@ func TestDemoEncryption(t * testing.T){
 		}
 		
 		writer := &cipher.StreamWriter{S: stream, W: outFile}
-		compressed := lzw.NewWriter(writer, lzw.LSB, 8)
+		compressed,_ := compress.NewWriterLevel(writer, compress.BestSpeed);
 		if _, err := io.Copy(compressed, inFile); err != nil {
 			panic(err)
 		}
@@ -194,11 +191,7 @@ func TestDemoEncryption(t * testing.T){
 		if err != nil {
 			panic(err)
 		}
-		block, err := aes.NewCipher(cryptkey)
-		if err != nil {
-			panic(err)
-		}
-
+	
 		var iv [aes.BlockSize]byte
 		stream := cipher.NewOFB(block, iv[:])
 		outFile, err := os.OpenFile(oname2, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
@@ -207,7 +200,7 @@ func TestDemoEncryption(t * testing.T){
 		}
 
 		reader := &cipher.StreamReader{S: stream, R: inFile}
-		decompressed := lzw.NewReader(reader, lzw.LSB, 8)
+		decompressed,_ := compress.NewReader(reader)
 		if _, err := io.Copy(outFile, decompressed); err != nil {
 			panic(err)
 		}
@@ -220,11 +213,9 @@ func TestDemoEncryption(t * testing.T){
 	if bytes.Equal(decompressedData, data) == false {
 		t.Errorf("input and output not the same %v %v", decompressedData, data)
 	}
-	t.Log("Success!")
-
-
 	
-	//defer os.Remove(iname)
-	//defer os.Remove(oname)
+	os.Remove(iname)
+	os.Remove(oname)
+	os.Remove(oname2)
 	
 }
