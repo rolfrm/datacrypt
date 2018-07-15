@@ -3,7 +3,12 @@ import "testing"
 import "os"
 import iou "io/ioutil"
 import "strings"
-
+import "crypto/aes"
+import "crypto/sha256"
+import "io"
+import "crypto/cipher"
+import "compress/lzw"
+import "bytes"
 func Test1(t *testing.T){
 	
 	file := "testfile"
@@ -22,8 +27,6 @@ func Test1(t *testing.T){
 		t.Errorf("Strings should not be equal %s == %s", a, b);
 	}
 }
-
-
 
 func TestDataCrypt(t *testing.T){
 	os.RemoveAll("data_test");
@@ -138,4 +141,90 @@ func TestScan(t * testing.T){
 			break;
 		}
 	}
+}
+
+func TestDemoEncryption(t * testing.T){
+	iname := "to_encrypt.bin"
+	oname := "encrypted.bin"
+	oname2 := "decrypted.bin"
+	
+	data,_ := iou.ReadFile("./src")//make([]byte, 1000)
+	//data[100] = 5
+	//data[200] = 5
+	//data[300] = 5
+	
+	iou.WriteFile(iname, data, 0777)
+
+		
+	hsh := sha256.New()
+	io.WriteString(hsh, "hello")
+	cryptkey := hsh.Sum(nil)
+
+	{ // write to file
+		inFile, err := os.Open(iname)
+		if err != nil {
+			panic(err)
+		}
+		block, err := aes.NewCipher(cryptkey)
+		if err != nil {
+			panic(err)
+		}
+		
+		var iv [aes.BlockSize]byte
+		stream := cipher.NewOFB(block, iv[:])
+		outFile, err := os.OpenFile(oname, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		
+		if err != nil {
+			panic(err)
+		}
+		
+		writer := &cipher.StreamWriter{S: stream, W: outFile}
+		compressed := lzw.NewWriter(writer, lzw.LSB, 8)
+		if _, err := io.Copy(compressed, inFile); err != nil {
+			panic(err)
+		}
+		compressed.Close()
+		outFile.Close()
+		inFile.Close()
+	}
+
+	{ // read from file
+		inFile, err := os.Open(oname)
+		
+		if err != nil {
+			panic(err)
+		}
+		block, err := aes.NewCipher(cryptkey)
+		if err != nil {
+			panic(err)
+		}
+
+		var iv [aes.BlockSize]byte
+		stream := cipher.NewOFB(block, iv[:])
+		outFile, err := os.OpenFile(oname2, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600)
+		if err != nil {
+			panic(err)
+		}
+
+		reader := &cipher.StreamReader{S: stream, R: inFile}
+		decompressed := lzw.NewReader(reader, lzw.LSB, 8)
+		if _, err := io.Copy(outFile, decompressed); err != nil {
+			panic(err)
+		}
+		decompressed.Close()
+		outFile.Close()
+		inFile.Close()
+
+	}
+	decompressedData,_ := iou.ReadFile(oname2);
+	if bytes.Equal(decompressedData, data) == false {
+		t.Errorf("input and output not the same %v %v", decompressedData, data)
+	}
+	t.Log("Success!")
+
+
+	
+	//defer os.Remove(iname)
+	//defer os.Remove(oname)
+	
 }
