@@ -1,0 +1,26 @@
+.commits
+- contains all the changes to files.
+- each file in .commits is one change.
+- each file in .commits is encrypted with the same key
+- same system as datalog
+
+- a file has an ID
+- a file points to a list of data chunks
+- a data chunk is just a bunch of bytes
+- an ID has a name, and a modification date
+- a directory has an ID
+- an ID can be renamed
+- an ID can be deleted
+
+example:
+[file 1]
+[file-info 1 "hello world.txt" 2018-3-10-13:14:12.111]
+[chunk 1 0x1237991367123821732161897321764843792193762871643682971372648123...]
+[file-data :id 1 :offset 0 :chunk 1 :count 10000]
+[file-data :id 1 :offset 10000 :chunk 2 :count 1000]
+[delete :id 1]
+
+
+with this encoding, deduplication can be implemented. Chunks are compressed and then encrypted.
+
+This is probably easiest to implement in C# or maybe even python.
