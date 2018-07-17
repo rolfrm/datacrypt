@@ -5,7 +5,7 @@ import "crypto/cipher"
 import compress "compress/zlib"
 import "crypto/sha256"
 import "crypto/aes"
-
+import "hash"
 func CompressionWriter(outwriter io.Writer, key string) io.WriteCloser{
 	hsh := sha256.New()
 	io.WriteString(hsh, key)
@@ -37,4 +37,22 @@ func CompressionReader(inreader io.Reader, key string) io.ReadCloser {
 	decompressed,_ := compress.NewReader(reader)
 	return decompressed
 
+}
+
+type HashWriter struct {
+	hash hash.Hash
+	writer io.Writer
+}
+
+func (hw HashWriter)Write(p []byte)(int, error){
+	hw.hash.Write(p)
+	return hw.writer.Write(p)
+}
+
+func NewHashWriter(hash hash.Hash, writer io.Writer) HashWriter{
+	return HashWriter {hash: hash, writer: writer}
+}
+
+func (hw * HashWriter) Sum() []byte{
+	return hw.hash.Sum(nil)
 }

@@ -312,5 +312,33 @@ func TestBoltBig(t * testing.T){
 		}
 	}
 	t.Log(toJson(db.Stats()))
+}
+
+
+func TestLink(t * testing.T){
+	data := make([]byte, 100)
+	data[10] = 5
+	data[0] = 42
 	
+	iname := "hello_link"
+	oname := "hello_link2"
+	iou.WriteFile(iname, data, 0666)
+	err:= os.Link(iname, oname)
+	if err != nil {
+		switch err.(type) {
+		case *os.LinkError:
+			t.Errorf("Link Error: %v", err.(*os.LinkError).Err)
+		}
+	}
+	os.Remove(iname)
+	data2,err := iou.ReadFile(oname)
+	if err != nil{
+		panic(err)
+	}
+	if bytes.Equal(data2, data) == false {
+		t.Errorf("Does not work as expected!")
+		return;
+	}
+	os.Remove(oname)
+
 }

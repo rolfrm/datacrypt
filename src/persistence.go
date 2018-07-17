@@ -22,7 +22,7 @@ type FilePersistence interface {
 	GetPersistId(file FileData) (FileId, error)
 	GenPersistId(file FileData) FileId
 	FilePersisted(fid FileId) (FileHash, error)
-	PersistData(file FileData) FileHash
+	PersistData(file FileData) (FileHash, error)
 	GetFileLet(file FileId) FileLet
 	SetFileLet(file FileId, let FileLet)
 	GetChangeHash(fid FileId) ChangeHash
@@ -107,7 +107,10 @@ func getFileUpdates(dc FilePersistence, file FileData) chan ChangeData{
 			return
 		}
 
-		nhsh := dc.PersistData(file)
+		nhsh,err := dc.PersistData(file)
+		if err != nil {
+			panic("What now!?!")
+		}
 		{
 			var cd ChangeData
 			cd.ID = id
