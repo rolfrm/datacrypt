@@ -162,8 +162,7 @@ func (thing *filedata) getFileId(dc * datacrypt) FileId{
 	return fileid
 }
 
-func (dc * datacrypt) dbPut(section []byte, name []byte , thing interface{}) error{
-	db := dc.db;
+func boltPut(db * bolt.DB,section []byte, name []byte , thing interface{}) error{
 	db.Update(func(tx * bolt.Tx) error{
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
@@ -175,10 +174,10 @@ func (dc * datacrypt) dbPut(section []byte, name []byte , thing interface{}) err
 		return nil
 	})
 	return nil
+
 }
 
-func (dc * datacrypt) dbGet(section []byte, name []byte, thing interface{}) error{
-	db := dc.db;
+func boltGet(db * bolt.DB, section []byte, name []byte, thing interface{}) error{
 	ok := true
 	err := db.View(func(tx * bolt.Tx) error{
 		b := tx.Bucket(section)
@@ -204,15 +203,30 @@ func (dc * datacrypt) dbGet(section []byte, name []byte, thing interface{}) erro
 	return nil
 }
 
-func (dc * datacrypt) dbEnsureBucket( name []byte){
-	dc.db.Update(func(tx *bolt.Tx) error {
+
+func (dc * datacrypt) dbPut(section []byte, name []byte , thing interface{}) error{
+	return boltPut(dc.db, section, name, thing)
+}
+
+
+
+func (dc * datacrypt) dbGet(section []byte, name []byte, thing interface{}) error{
+	return boltGet(dc.db, section, name, thing);
+}
+
+func boltEnsureBucket(db * bolt.DB, name []byte){
+	db.Update(func(tx *bolt.Tx) error {
 		_, err := tx.CreateBucketIfNotExists(name)
 		if err != nil {
 			return fmt.Errorf("create bucket: %s", err)
 		}
 		return nil
 	})
+	
+}
 
+func (dc * datacrypt) dbEnsureBucket( name []byte){
+	boltEnsureBucket(dc.db, name)
 
 }
 

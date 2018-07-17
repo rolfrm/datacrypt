@@ -9,6 +9,8 @@ import "io"
 import "crypto/cipher"
 import compress "compress/zlib"
 import "bytes"
+import "github.com/boltdb/bolt"
+import "encoding/json"
 func Test1(t *testing.T){
 	
 	file := "testfile"
@@ -276,4 +278,39 @@ func TestDemoEncryption2(t * testing.T){
 	os.Remove(iname)
 	os.Remove(oname)
 	os.Remove(oname2)	
+}
+
+func toJson(thing interface{}) string{
+	bytes,_ := json.Marshal(thing)
+	return string(bytes)
+
+}
+
+func TestBoltBig(t * testing.T){
+	var db *bolt.DB
+	db, _ = bolt.Open("test_state.db", 0600, nil)
+	defer db.Close()
+	//defer os.Remove("test_state.db")
+
+	n1 := []byte("test1")
+	
+	boltEnsureBucket(db, n1)
+	{
+		boltPut(db, n1, []byte("hej"), make([]byte, 10000000))
+		var back []byte
+		boltGet(db,n1, []byte("hej"), &back)
+		if  len(back) != 10000000 {
+			t.Errorf("Error does not match!")
+		}
+	}
+	for i := 0; i < 0; i++ {
+		boltPut(db, n1, []byte("hej"), make([]byte, 10000000 * i))
+		var back []byte
+		boltGet(db,n1, []byte("hej"), &back)
+		if  len(back) != 10000000 * i {
+			t.Errorf("Error does not match!")
+		}
+	}
+	t.Log(toJson(db.Stats()))
+	
 }
