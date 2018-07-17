@@ -42,8 +42,8 @@ func TestDataCrypt(t *testing.T){
 	iou.WriteFile("data_test/test_dir/test3", make([]byte, 30), 0777)
 
 	fd := getFileData("data_test/test1");
-	if fd.size != 10 {
-		t.Errorf("unexpected size of data %d", fd.size);
+	if fd.Size != 10 {
+		t.Errorf("unexpected size of data %d", fd.Size);
 	}
 	
 	dc :=  NewDataCrypt("data_test", "data_test_commits", "hello world");
@@ -67,10 +67,10 @@ func TestDataCrypt(t *testing.T){
 			t.Errorf("Thing should not exist %v", err)
 		}
 
-		x := filelet {Size: 103}
+		x := FileLet {Size: 103}
 		dbSetFileInfo(dc2, f, x)
 
-		x3 := filelet {Size: 10}
+		x3 := FileLet {Size: 10}
 		var f2 FileId
 		f2.id[1] = 2
 		dbSetFileInfo(dc2, f2, x3)

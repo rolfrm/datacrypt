@@ -4,25 +4,25 @@ import iou "io/ioutil"
 import "path/filepath"
 import "time"
 
-type filedata struct {
-	modification_time time.Time
-	size int64
-	folder string
-	name string
-	isDirectory bool
+type FileData struct {
+	ModTime time.Time
+	Size int64
+	Folder string
+	Name string
+	IsDirectory bool
 }
 
 
-func stat2FileData(stat os.FileInfo, folder string) filedata{
-	return filedata {
-		modification_time: stat.ModTime(),
-		size: stat.Size(),
-		folder: folder,
-		name: stat.Name(),
-		isDirectory: stat.IsDir()}
+func stat2FileData(stat os.FileInfo, folder string) FileData{
+	return FileData {
+		ModTime: stat.ModTime(),
+		Size: stat.Size(),
+		Folder: folder,
+		Name: stat.Name(),
+		IsDirectory: stat.IsDir()}
 }
 
-func _scanDirectory(folder string, ch chan filedata){
+func _scanDirectory(folder string, ch chan FileData){
 	things,_:= iou.ReadDir(folder)
 	for _,value := range things {
 		ch <- stat2FileData(value, folder)
@@ -36,8 +36,8 @@ func _scanDirectory(folder string, ch chan filedata){
 	}
 }
 
-func scanDirectory(folder string) chan filedata{
-	ch := make(chan filedata, 10)
+func scanDirectory(folder string) chan FileData{
+	ch := make(chan FileData, 10)
 	go func(){
 		_scanDirectory(folder, ch)
 		close(ch)

@@ -63,45 +63,45 @@ type datacrypt struct{
 	db *bolt.DB
 }
 
-type filelet struct{
+type FileLet struct{
 	Size int64
-	Modification_time time.Time
+	ModTime time.Time
 	IsDirectory bool 
 }
 
-func (fd * filedata) toFileLet() filelet{
-	return filelet {Size: fd.size,
-		Modification_time: fd.modification_time,
-		IsDirectory: fd.isDirectory}
+func (fd * FileData) ToFileLet() FileLet{
+	return FileLet {Size: fd.Size,
+		ModTime: fd.ModTime,
+		IsDirectory: fd.IsDirectory}
 }
 
-func cachedFileData(dc * datacrypt, filename string) filedata {
+func cachedFileData(dc * datacrypt, filename string) FileData {
 	uname := encodeAsBase64(filename);
 	df := filepath.Join(dc.localFolder, uname);
 	txt,_ := iou.ReadFile(df);
 	if len(txt) == 0 {
-		return filedata{};
+		return FileData{};
 	}
 	
 	ofile,_ := os.OpenFile(df, os.O_RDONLY, 0);
 	defer ofile.Close()
 	dec := gob.NewDecoder(ofile);
 
-	var out filedata
+	var out FileData
 	if nil != dec.Decode(&out) {
-		return filedata{};
+		return FileData{};
 	}
 	return out;
 }
 
-func getFileData(filename string) filedata {
+func getFileData(filename string) FileData {
 	f,err := os.Stat(filename)
 	if err != nil {
-		return filedata{}
+		return FileData{}
 	}
-	return filedata {
-		modification_time: f.ModTime(),
-		size: f.Size()}
+	return FileData {
+		ModTime: f.ModTime(),
+		Size: f.Size()}
 }
 
 
@@ -134,12 +134,12 @@ func initializeDirectory(dc * datacrypt, folder string){
 				datafile := filepath.Join(dc.localFolder, fileid)
 				ofile,_ := os.OpenFile(datafile, os.O_RDONLY, 0);
 
-				var out filedata
+				var out FileData
 				dec := gob.NewDecoder(ofile);
 				dec.Decode(&out);
 				ofile.Close()
 
-				if out.size != value.Size() || out.modification_time.Before(value.ModTime()) {
+				if out.Size != value.Size() || out.ModTime.Before(value.ModTime()) {
 					dc.list.PushBack(fp);
 				}
 			}
@@ -147,20 +147,19 @@ func initializeDirectory(dc * datacrypt, folder string){
 	}
 }
 
-type FileId struct {
-	id [16]byte
-}
 
-func (thing *filedata) getFileId(dc * datacrypt) FileId{
-	relFolder,_ := filepath.Rel(dc.dataFolder, thing.folder);
+
+func (thing *FileData) getFileId(dc * datacrypt) FileId{
+	relFolder,_ := filepath.Rel(dc.dataFolder, thing.Folder);
 	hsh := fnv.New128()
 	io.WriteString(hsh, relFolder);
-	io.WriteString(hsh, thing.name);
+	io.WriteString(hsh, thing.Name);
 	hshbytes := hsh.Sum(nil)
 	var fileid FileId
 	copy(hshbytes[:16], fileid.id[:16])
 	return fileid
 }
+
 
 func boltPut(db * bolt.DB,section []byte, name []byte , thing interface{}) error{
 	db.Update(func(tx * bolt.Tx) error{
@@ -231,23 +230,23 @@ func (dc * datacrypt) dbEnsureBucket( name []byte){
 }
 
 
-func dbGetFileInfo(dc * datacrypt, thing FileId) (filelet, error){
-	var result filelet
+func dbGetFileInfo(dc * datacrypt, thing FileId) (FileLet, error){
+	var result FileLet
 	err := dc.dbGet([]byte("files"), thing.id[:16], &result)
 	return result, err
 }
 
-func dbSetFileInfo(dc * datacrypt, thing FileId, value filelet) error{
+func dbSetFileInfo(dc * datacrypt, thing FileId, value FileLet) error{
 	err := dc.dbPut([]byte("files"), thing.id[:16], value)
 	return err
 }
 
-func dataCryptRegister(dc *datacrypt, thing filedata){
+func dataCryptRegister(dc *datacrypt, thing FileData){
 	id := thing.getFileId(dc)
 	fi, err := dbGetFileInfo(dc, id)
 	
 	if err == nil {
-		if (fi.Size == thing.size) && (fi.Modification_time == thing.modification_time){
+		if (fi.Size == thing.Size) && (fi.ModTime == thing.ModTime){
 			return; // same as is already known
 		}		
 	}
