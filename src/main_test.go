@@ -96,7 +96,7 @@ func TestDataCrypt(t *testing.T){
 		panic(err)
 	}
 	if val != 1234 {
-		//t.Errorf("Unable to deserialize correctly 1234 == %v", val)
+		t.Errorf("Unable to deserialize correctly 1234 == %v", val)
 	}
 	scan := scanDirectory("data_test");
 	for x := range(scan) {
