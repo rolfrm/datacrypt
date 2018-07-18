@@ -156,23 +156,24 @@ func (thing *FileData) getFileId(dc * datacrypt) FileId{
 	io.WriteString(hsh, thing.Name);
 	hshbytes := hsh.Sum(nil)
 	var fileid FileId
-	copy(fileid.id[:16], hshbytes[:16])
+	copy(fileid.ID[:16], hshbytes[:16])
 	return fileid
 }
 
 
 func boltPut(db * bolt.DB,section []byte, name []byte , thing interface{}) error{
-	db.Update(func(tx * bolt.Tx) error{
+	return db.Update(func(tx * bolt.Tx) error{
 		var buf bytes.Buffer
 		enc := gob.NewEncoder(&buf)
-		enc.Encode(thing)
-		
+		err := enc.Encode(thing)
+		if err != nil{
+			return err;
+		}
 		b := tx.Bucket(section)
 		bytes := buf.Bytes()
 		b.Put(name, bytes)
 		return nil
 	})
-	return nil
 
 }
 
@@ -227,12 +228,12 @@ func (dc * datacrypt) dbEnsureBucket( name []byte){
 
 func dbGetFileInfo(dc * datacrypt, thing FileId) (FileLet, error){
 	var result FileLet
-	err := dc.dbGet([]byte("files"), thing.id[:16], &result)
+	err := dc.dbGet([]byte("files"), thing.ID[:16], &result)
 	return result, err
 }
 
 func dbSetFileInfo(dc * datacrypt, thing FileId, value FileLet) error{
-	err := dc.dbPut([]byte("files"), thing.id[:16], value)
+	err := dc.dbPut([]byte("files"), thing.ID[:16], value)
 	return err
 }
 

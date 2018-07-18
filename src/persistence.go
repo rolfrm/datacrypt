@@ -6,15 +6,15 @@ import "bytes"
 import "hash/fnv"
 
 type FileId struct {
-	id [16]byte
+	ID [16]byte
 }
 
 type FileHash struct {
-	id [16]byte
+	Hash [16]byte
 }
 
 type ChangeHash struct{
-	id [16]byte
+	Hash [16]byte
 }
 
 type FilePersistence interface {
@@ -45,7 +45,7 @@ func ChangeDataHash(data ChangeData) ChangeHash {
 
 	var ch ChangeHash
 	for i:= 0; i < 16; i++ {
-		ch.id[i] = sum[i]
+		ch.Hash[i] = sum[i]
 	}
 	return ch
 }

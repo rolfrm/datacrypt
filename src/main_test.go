@@ -62,7 +62,7 @@ func TestDataCrypt(t *testing.T){
 
 	{
 		var f FileId
-		f.id[1] = 1
+		f.ID[1] = 1
 		_,err := dbGetFileInfo(dc2, f)
 		if err == nil {
 			t.Errorf("Thing should not exist %v", err)
@@ -73,7 +73,7 @@ func TestDataCrypt(t *testing.T){
 
 		x3 := FileLet {Size: 10}
 		var f2 FileId
-		f2.id[1] = 2
+		f2.ID[1] = 2
 		dbSetFileInfo(dc2, f2, x3)
 		dbGetFileInfo(dc2, f2)
 
@@ -91,7 +91,10 @@ func TestDataCrypt(t *testing.T){
 	dc2.dbEnsureBucket([]byte("thing"))
 	dc2.dbPut([]byte("thing"), []byte("asd"), val);
 	val = 1
-	dc2.dbGet([]byte("thing"), []byte("asd"), &val);
+	err := dc2.dbGet([]byte("thing"), []byte("asd"), &val);
+	if err != nil {
+		panic(err)
+	}
 	if val != 1234 {
 		//t.Errorf("Unable to deserialize correctly 1234 == %v", val)
 	}
@@ -103,7 +106,7 @@ func TestDataCrypt(t *testing.T){
 			fid, err := dc2.GetPersistId(x)
 			if err != nil {
 				fid = dc2.GenPersistId(x)
-				t.Log("gen", fid)		
+				t.Log("gen", fid, err)		
 			}
 		}
 		{

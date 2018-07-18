@@ -16,7 +16,7 @@ type Persisted struct {
 func (dc * datacrypt) GetPersistId(file FileData) (FileId, error){
 	id := file.getFileId(dc)
 	var thing Persisted 
-	err := dc.dbGet([]byte("files"), id.id[:16], &thing)
+	err := dc.dbGet([]byte("files"), id.ID[:16], &thing)
 	return id,err
 }
 
@@ -24,7 +24,7 @@ func (dc * datacrypt) GenPersistId(file FileData) FileId {
 	id := file.getFileId(dc)
 	var thing Persisted
 	thing.Exists = false
-	err := dc.dbPut([]byte("files"), id.id[:16], thing)
+	err := dc.dbPut([]byte("files"), id.ID[:16], thing)
 	if err != nil {
 		panic(err)
 	}
@@ -33,7 +33,7 @@ func (dc * datacrypt) GenPersistId(file FileData) FileId {
 
 func (dc * datacrypt) FilePersisted(id FileId) (FileHash, error){
 	var thing Persisted 
-	err := dc.dbGet([]byte("files"), id.id[:16], &thing)
+	err := dc.dbGet([]byte("files"), id.ID[:16], &thing)
 	return thing.PersistedHash,err	
 }
 
@@ -56,7 +56,7 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	var existing []byte
 	err = dc.dbGet([]byte("files"), hash[:16], &existing)
 	if err == nil {
-		return FileHash{ id: hash }, nil
+		return FileHash{ Hash: hash }, nil
 	}
 	
 	readfilestr.Seek(0, 0)
@@ -77,7 +77,7 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	writer.Close()
 	f.Close()
 	os.Truncate(outFile, written)
-	return FileHash{ id: hash }, nil
+	return FileHash{ Hash: hash }, nil
 	
 	
 }
