@@ -91,6 +91,14 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	dc.dbPut([]byte("files"), fileid.ID[:16], p)
 	
 	return FileHash{ Hash: fhash }, nil
-	
-	
+}
+
+func (dc * datacrypt) SetFileLet(fileid FileId, let FileLet) error{
+	return dc.dbPut([]byte("lets"), fileid.ID[:16], let)
+}
+
+func (dc * datacrypt) GetFileLet(fileid FileId) (FileLet,error) {
+	var f FileLet
+	err := dc.dbGet([]byte("lets"), fileid.ID[:16], &f)
+	return f,err
 }

@@ -23,11 +23,12 @@ type FilePersistence interface {
 	GenPersistId(file FileData) FileId
 	FilePersisted(fid FileId) (FileHash, error)
 	PersistData(file FileData) (FileHash, error)
-	GetFileLet(file FileId) FileLet
-	SetFileLet(file FileId, let FileLet)
+	GetFileLet(file FileId) (FileLet, error)
+	SetFileLet(file FileId, let FileLet) error
 	GetChangeHash(fid FileId) ChangeHash
 	FileDeleted(fid FileId) bool
 	FileExists(file FileData) bool
+	PushCommit(change ChangeData)
 }
 
 
@@ -77,59 +78,60 @@ type FileDeleted struct {
 }
 
 
-func getFileUpdates(dc FilePersistence, file FileData) chan ChangeData{
-	ch := make(chan ChangeData)
-	go func(){
-		id,err := dc.GetPersistId(file)
-		if err != nil {
-			id = dc.GenPersistId(file)
-			var cd ChangeData
-			cd.ID = id
-			var ic ItemCreated
-			cd.Data = ic
-			ic.Name = file.Name
-			ic.Folder = file.Folder
-			ic.IsDirectory = file.IsDirectory
-			ch <- cd
-		}
-		if dc.FileExists(file) == false && dc.FileDeleted(id) == false {
-			var cd ChangeData
-			cd.ID = id
-			cd.Parent = dc.GetChangeHash(id)
-			cd.Data = FileDeleted{}
-			ch <- cd
-			return;
-		}
+func getFileUpdates(dc FilePersistence, file FileData){
+
+	id,err := dc.GetPersistId(file)
+	if err != nil {
+		id = dc.GenPersistId(file)
+		var cd ChangeData
+		cd.ID = id
+		var ic ItemCreated
+		cd.Data = ic
+		ic.Name = file.Name
+		ic.Folder = file.Folder
+		ic.IsDirectory = file.IsDirectory
+		dc.PushCommit(cd)
+	}
+
+	if dc.FileExists(file) == false && dc.FileDeleted(id) == false {
+		var cd ChangeData
+		cd.ID = id
+		cd.Parent = dc.GetChangeHash(id)
+		cd.Data = FileDeleted{}
+		dc.PushCommit(cd)
+		return;
+	}
 
 		
-		flet := dc.GetFileLet(id);
-		if flet.Size == file.Size && flet.ModTime == file.ModTime {
-			return
-		}
+	flet,err := dc.GetFileLet(id);
+	if err != nil {
+		panic(err)
+	}
+	if flet.Size == file.Size && flet.ModTime == file.ModTime {
+		return
+	}
 
-		nhsh,err := dc.PersistData(file)
-		if err != nil {
-			panic("What now!?!")
-		}
-		{
-			var cd ChangeData
-			cd.ID = id
-			cd.Parent = dc.GetChangeHash(id)
-			var fd PersistedFileData
-			fd.Hash = nhsh
-			ch <- cd
-		}
+	nhsh,err := dc.PersistData(file)
+	if err != nil {
+		panic("What now!?!")
+	}
+	{
+		var cd ChangeData
+		cd.ID = id
+		cd.Parent = dc.GetChangeHash(id)
+		var fd PersistedFileData
+		fd.Hash = nhsh
+		dc.PushCommit(cd)
+	}
 		
-		{
-			flet := file.ToFileLet()
-			var cd ChangeData
-			cd.ID = id
-			cd.Parent = dc.GetChangeHash(id)
-			var fd FileDataChanged
-			fd.Size = flet.Size
-			fd.ModTime = flet.ModTime
-			ch <- cd
-		}
-	}()
-	return ch
+	{
+		flet := file.ToFileLet()
+		var cd ChangeData
+		cd.ID = id
+		cd.Parent = dc.GetChangeHash(id)
+		var fd FileDataChanged
+		fd.Size = flet.Size
+		fd.ModTime = flet.ModTime
+		dc.PushCommit(cd)
+	}
 }
