@@ -11,6 +11,7 @@ import compress "compress/zlib"
 import "bytes"
 import "github.com/boltdb/bolt"
 import "encoding/json"
+import "path/filepath"
 func Test1(t *testing.T){
 	
 	file := "testfile"
@@ -94,6 +95,28 @@ func TestDataCrypt(t *testing.T){
 	if val != 1234 {
 		//t.Errorf("Unable to deserialize correctly 1234 == %v", val)
 	}
+	scan := scanDirectory("data_test");
+	for x := range(scan) {
+		relFolder,_ := filepath.Rel(dc2.dataFolder, x.Folder);
+		x.Folder = relFolder
+		{
+			fid, err := dc2.GetPersistId(x)
+			if err != nil {
+				fid = dc2.GenPersistId(x)
+				t.Log("gen", fid)		
+			}
+		}
+		{
+			fid, err := dc2.GetPersistId(x)
+			if err != nil {
+				t.Errorf("Error happened %v id: %v", err, fid)
+			}
+		}
+
+		
+	}
+	
+	
 	dataCryptClose(dc2);
 	os.RemoveAll(dc2.localFolder)
 	//if test.initialized == false {

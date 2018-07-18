@@ -1,12 +1,11 @@
 package main
 
 import (
-	"io/ioutil"
 	"hash/fnv"
 	"path/filepath"
-	"io"
 	"os"
-	"fmt"
+	"io"
+	baseenc "encoding/base32"
 )
 
 type Persisted struct {
@@ -39,10 +38,7 @@ func (dc * datacrypt) FilePersisted(id FileId) (FileHash, error){
 }
 
 func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
-	tmp,err := ioutil.TempFile(dc.localFolder, "TMP_")
-	if err != nil {
-		return FileHash{}, err
-	}
+	
 	readFile := filepath.Join(dc.dataFolder, file.Folder, file.Name);
 	readfilestr, err := os.Open(readFile)
 	if err != nil {
@@ -55,18 +51,33 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	}
 
 	hsh := hasher.Sum(nil)
+	var hash [16]byte
+	copy(hash[:], hsh[:16])
+	var existing []byte
+	err = dc.dbGet([]byte("files"), hash[:16], &existing)
+	if err == nil {
+		return FileHash{ id: hash }, nil
+	}
+	
 	readfilestr.Seek(0, 0)
-	
-	writer := CompressionWriter(tmp, dc.key)
 
+	outFile := filepath.Join(dc.commitFolder, baseenc.StdEncoding.EncodeToString(hsh))
+	f, err := os.OpenFile(outFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	
-	if _, err := io.Copy(writer, readfilestr); err != nil {
+	if err != nil {
+		return FileHash{}, err
+	}
+	
+	writer := CompressionWriter(f, dc.key)
+
+	written, err := io.Copy(writer, readfilestr)
+	if err != nil {
 		panic(err)
 	}
 	writer.Close()
-
-	fmt.Println(hsh)
-	return FileHash{}, nil
+	f.Close()
+	os.Truncate(outFile, written)
+	return FileHash{ id: hash }, nil
 	
 	
 }

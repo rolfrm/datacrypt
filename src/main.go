@@ -156,7 +156,7 @@ func (thing *FileData) getFileId(dc * datacrypt) FileId{
 	io.WriteString(hsh, thing.Name);
 	hshbytes := hsh.Sum(nil)
 	var fileid FileId
-	copy(hshbytes[:16], fileid.id[:16])
+	copy(fileid.id[:16], hshbytes[:16])
 	return fileid
 }
 
@@ -177,7 +177,7 @@ func boltPut(db * bolt.DB,section []byte, name []byte , thing interface{}) error
 }
 
 func boltGet(db * bolt.DB, section []byte, name []byte, thing interface{}) error{
-	ok := true
+	var innerErr error
 	err := db.View(func(tx * bolt.Tx) error{
 		b := tx.Bucket(section)
 		v := b.Get(name)
@@ -186,20 +186,15 @@ func boltGet(db * bolt.DB, section []byte, name []byte, thing interface{}) error
 			dec := gob.NewDecoder(buf)
 			err := dec.Decode(thing)
 			if err != nil {
-				ok = false
+				innerErr = err
 			}
 		}else{
-			ok = false
+			innerErr = fmt.Errorf("Unknown item %v", name)
 		}
-		return nil
+		return innerErr
 	})
-	if err != nil {
-		ok = false
-	}
-	if !ok {
-		return fmt.Errorf("Unable to read item from db")
-	}
-	return nil
+	
+	return err
 }
 
 
@@ -323,3 +318,4 @@ func main() {
 	fmt.Println(dc);
 	
 }
+

@@ -40,6 +40,7 @@ func CompressionReader(inreader io.Reader, key string) io.ReadCloser {
 }
 
 type HashWriter struct {
+
 	hash hash.Hash
 	writer io.Writer
 }
@@ -56,3 +57,4 @@ func NewHashWriter(hash hash.Hash, writer io.Writer) HashWriter{
 func (hw * HashWriter) Sum() []byte{
 	return hw.hash.Sum(nil)
 }
+
