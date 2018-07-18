@@ -4,6 +4,7 @@ import (
 	"hash/fnv"
 	"path/filepath"
 	"os"
+	"bytes"
 	"io"
 	baseenc "encoding/base32"
 )
@@ -38,7 +39,9 @@ func (dc * datacrypt) FilePersisted(id FileId) (FileHash, error){
 }
 
 func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
-	
+	if file.IsDirectory {
+		panic("Directories cannot be persisted")
+	}
 	readFile := filepath.Join(dc.dataFolder, file.Folder, file.Name);
 	readfilestr, err := os.Open(readFile)
 	if err != nil {
@@ -49,16 +52,21 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	if _, err := io.Copy(hasher, readfilestr); err != nil {
 		panic(err)
 	}
-
-	hsh := hasher.Sum(nil)
-	var hash [16]byte
-	copy(hash[:], hsh[:16])
-	var existing []byte
-	err = dc.dbGet([]byte("files"), hash[:16], &existing)
-	if err == nil {
-		return FileHash{ Hash: hash }, nil
+	fileid, err := dc.GetPersistId(file)
+	if err != nil {
+		panic(err)
 	}
+	hsh := hasher.Sum(nil)
+
+	var fhash [16]byte
+
+	copy(fhash[:], hsh)
 	
+	chash,err := dc.FilePersisted(fileid)
+	if bytes.Equal(hsh, chash.Hash[:]) {
+		return chash,nil
+	}
+	 
 	readfilestr.Seek(0, 0)
 
 	outFile := filepath.Join(dc.commitFolder, baseenc.StdEncoding.EncodeToString(hsh))
@@ -77,7 +85,12 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	writer.Close()
 	f.Close()
 	os.Truncate(outFile, written)
-	return FileHash{ Hash: hash }, nil
+
+	
+	p := Persisted {Exists: true, PersistedHash: FileHash { Hash: fhash}}
+	dc.dbPut([]byte("files"), fileid.ID[:16], p)
+	
+	return FileHash{ Hash: fhash }, nil
 	
 	
 }

@@ -114,6 +114,28 @@ func TestDataCrypt(t *testing.T){
 			if err != nil {
 				t.Errorf("Error happened %v id: %v", err, fid)
 			}
+			if x.IsDirectory {
+				continue
+			}
+			
+			_,err = dc2.FilePersisted(fid)
+			if err != nil {
+				t.Errorf("there should be an error")
+			}
+			hsh,err := dc2.PersistData(x)
+			if err != nil {
+				panic(err)
+			}
+			hsh2,err := dc2.PersistData(x)
+			if err != nil{
+				panic(err)
+			}
+			if false == bytes.Equal(hsh.Hash[:16], hsh2.Hash[:]) {
+				panic("Hashes are not the same")
+			}
+			
+				
+			
 		}
 
 		
