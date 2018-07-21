@@ -51,6 +51,9 @@ func TestDataCrypt(t *testing.T){
 	if dc == nil {
 		t.Errorf("Unable to create dc");
 	}
+	
+	iou.WriteFile("data_test/test_dir/test3", make([]byte, 35), 0777)
+	
 	dataCryptClose(dc);
 	t.Log("Created dc");
 
@@ -390,4 +393,18 @@ func TestIntConv(t * testing.T){
      // the important thing here is that there is no overflow.
      // the conversion should wrap around.
 
+}
+
+func TestFilePathData(t * testing.T){
+	a := path2FileData("./main_test.go");
+	abs,err := filepath.Abs("./main_test.go")
+	if err != nil {
+		panic(err)
+	}
+	b := path2FileData(abs)
+	if strings.Compare(a.Name, b.Name) != 0 {
+		t.Errorf("Names should be the same");		
+	}
+	
+	
 }

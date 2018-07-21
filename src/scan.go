@@ -3,6 +3,7 @@ import "os"
 import iou "io/ioutil"
 import "path/filepath"
 import "time"
+import "fmt"
 
 type FileData struct {
 	ModTime time.Time
@@ -21,6 +22,16 @@ func stat2FileData(stat os.FileInfo, folder string) FileData{
 		Name: stat.Name(),
 		IsDirectory: stat.IsDir()}
 }
+
+func path2FileData(path string) FileData {
+	stat,err := os.Lstat(path)
+	
+	if err != nil{
+		panic(fmt.Sprintf("%v '%v'", err, path))
+	}
+	return stat2FileData(stat, filepath.Dir(path))
+}
+
 
 func _scanDirectory(folder string, ch chan FileData){
 	things,_:= iou.ReadDir(folder)
