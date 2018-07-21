@@ -5,17 +5,18 @@ import "encoding/gob"
 import "encoding/binary"
 import "bytes"
 import "hash/fnv"
+import "fmt"
 
 type FileId struct {
 	ID [16]byte
 }
 
 type FileHash struct {
-        Size int64
+	Size int64
 	Hash [16]byte
 }
 
-func (f FileHash)ToBytes()[]byte{
+func (f FileHash) ToBytes() []byte {
 	var buf bytes.Buffer
 	buf.Write(f.Hash[:])
 	var sizeBytes [8]byte
@@ -23,13 +24,12 @@ func (f FileHash)ToBytes()[]byte{
 	buf.Write(sizeBytes[:cnt])
 	return buf.Bytes()
 }
-  
-type ChangeHash struct{
+
+type ChangeHash struct {
 	Hash [16]byte
 }
 
 type FilePersistence interface {
-
 	GetPersistId(file FileData) (FileId, error)
 	GenPersistId(file FileData) FileId
 	FilePersisted(fid FileId) (FileHash, error)
@@ -42,40 +42,37 @@ type FilePersistence interface {
 	PushCommit(change ChangeData)
 }
 
-
 type Change interface {
-
 }
 
-func (data * ChangeData)Hash() ChangeHash {
+func (data *ChangeData) Hash() ChangeHash {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	enc.Encode(data)
 	hsh := fnv.New128()
-	sum := hsh.Sum(buf.Bytes());
+	sum := hsh.Sum(buf.Bytes())
 
 	var ch ChangeHash
-	for i:= 0; i < 16; i++ {
+	for i := 0; i < 16; i++ {
 		ch.Hash[i] = sum[i]
 	}
 	return ch
 }
 
 type ChangeData struct {
-	ID FileId
+	ID     FileId
 	Parent ChangeHash
-	Data Change
+	Data   Change
 }
 
-
 type ItemCreated struct {
-	Folder string
-	Name string
+	Folder      string
+	Name        string
 	IsDirectory bool
 }
 
 type FileDataChanged struct {
-	Size int64
+	Size    int64
 	ModTime time.Time
 }
 
@@ -84,13 +81,11 @@ type PersistedFileData struct {
 }
 
 type FileDeleted struct {
-	
 }
 
+func getFileUpdates(dc FilePersistence, file FileData) {
 
-func getFileUpdates(dc FilePersistence, file FileData){
-
-	id,err := dc.GetPersistId(file)
+	id, err := dc.GetPersistId(file)
 	if err != nil {
 		id = dc.GenPersistId(file)
 		var cd ChangeData
@@ -109,21 +104,21 @@ func getFileUpdates(dc FilePersistence, file FileData){
 		cd.Parent = dc.GetChangeHash(id)
 		cd.Data = FileDeleted{}
 		dc.PushCommit(cd)
-		return;
-	}
-
-		
-	flet,err := dc.GetFileLet(id);
-	if err != nil {
-		panic(err)
-	}
-	if flet.Size == file.Size && flet.ModTime == file.ModTime {
 		return
 	}
 
-	nhsh,err := dc.PersistData(file)
+	flet, err := dc.GetFileLet(id)
+
+	if err == nil && flet.Size == file.Size && flet.ModTime == file.ModTime {
+		return
+	}
+
+	if file.IsDirectory {
+		return
+	}
+	nhsh, err := dc.PersistData(file)
 	if err != nil {
-		panic("What now!?!")
+		panic(fmt.Sprintf("What now!?! %v", err))
 	}
 	{
 		var cd ChangeData
@@ -133,7 +128,7 @@ func getFileUpdates(dc FilePersistence, file FileData){
 		fd.Hash = nhsh
 		dc.PushCommit(cd)
 	}
-		
+
 	{
 		flet := file.ToFileLet()
 		var cd ChangeData
@@ -144,4 +139,5 @@ func getFileUpdates(dc FilePersistence, file FileData){
 		fd.ModTime = flet.ModTime
 		dc.PushCommit(cd)
 	}
+	dc.SetFileLet(id, file.ToFileLet())
 }

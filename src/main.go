@@ -240,6 +240,8 @@ func dbSetFileInfo(dc * datacrypt, thing FileId, value FileLet) error{
 }
 
 func dataCryptRegister(dc *datacrypt, thing FileData){
+	relFolder,_ := filepath.Rel(dc.dataFolder, thing.Folder)
+	thing.Folder = relFolder
 	id := thing.getFileId(dc)
 	fi, err := dbGetFileInfo(dc, id)
 	
@@ -249,7 +251,7 @@ func dataCryptRegister(dc *datacrypt, thing FileData){
 		}		
 	}
 	// thing does not exist in db, or only old version exists
-	
+	getFileUpdates(dc, thing);
 	
 	
 		
