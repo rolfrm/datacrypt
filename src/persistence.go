@@ -2,6 +2,7 @@ package main
 
 import "time"
 import "encoding/gob"
+import "encoding/binary"
 import "bytes"
 import "hash/fnv"
 
@@ -10,9 +11,19 @@ type FileId struct {
 }
 
 type FileHash struct {
+        Size int64
 	Hash [16]byte
 }
 
+func (f FileHash)ToBytes()[]byte{
+	var buf bytes.Buffer
+	buf.Write(f.Hash[:])
+	var sizeBytes [8]byte
+	cnt := binary.PutVarint(sizeBytes[:], f.Size)
+	buf.Write(sizeBytes[:cnt])
+	return buf.Bytes()
+}
+  
 type ChangeHash struct{
 	Hash [16]byte
 }

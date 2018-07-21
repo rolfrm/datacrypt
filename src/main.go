@@ -164,17 +164,18 @@ func (thing *FileData) getFileId(dc * datacrypt) FileId{
 func boltPut(db * bolt.DB,section []byte, name []byte , thing interface{}) error{
 	return db.Update(func(tx * bolt.Tx) error{
 		var buf bytes.Buffer
-		enc := gob.NewEncoder(&buf)
-		err := enc.Encode(thing)
-		if err != nil{
-			return err;
+		if(thing != nil) {
+			enc := gob.NewEncoder(&buf)
+			err := enc.Encode(thing)
+			if err != nil{
+				return err;
+			}
 		}
 		b := tx.Bucket(section)
 		bytes := buf.Bytes()
 		b.Put(name, bytes)
 		return nil
 	})
-
 }
 
 func boltGet(db * bolt.DB, section []byte, name []byte, thing interface{}) error{
@@ -182,7 +183,8 @@ func boltGet(db * bolt.DB, section []byte, name []byte, thing interface{}) error
 	err := db.View(func(tx * bolt.Tx) error{
 		b := tx.Bucket(section)
 		v := b.Get(name)
-		if v != nil {
+		
+		if v != nil && thing != nil {
 			buf := bytes.NewBuffer(v)
 			dec := gob.NewDecoder(buf)
 			err := dec.Decode(thing)
@@ -261,6 +263,7 @@ func dataCryptInitialize(dc * datacrypt){
 	dc.db = db
 
 	dc.dbEnsureBucket([]byte("files"))
+	dc.dbEnsureBucket([]byte("filehashes"))
 	
 	localNameFile := filepath.Join(dc.localFolder, "machine");
 	if !fileExists(localNameFile) {

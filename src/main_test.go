@@ -334,7 +334,7 @@ func toJson(thing interface{}) string{
 
 }
 
-func TestBoltBig(t * testing.T){
+func _TestBoltBig(t * testing.T){
 	var db *bolt.DB
 	db, _ = bolt.Open("test_state.db", 0600, nil)
 	defer db.Close()
@@ -388,5 +388,17 @@ func TestLink(t * testing.T){
 		return;
 	}
 	os.Remove(oname)
+
+}
+
+
+func TestIntConv(t * testing.T){
+     var x uint64
+     x = 100000000000
+     var y int32
+     y = int32(x)
+     t.Log(y)
+     // the important thing here is that there is no overflow.
+     // the conversion should wrap around.
 
 }

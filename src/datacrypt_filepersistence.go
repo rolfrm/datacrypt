@@ -4,7 +4,6 @@ import (
 	"hash/fnv"
 	"path/filepath"
 	"os"
-	"bytes"
 	"io"
 	baseenc "encoding/base32"
 )
@@ -38,6 +37,18 @@ func (dc * datacrypt) FilePersisted(id FileId) (FileHash, error){
 	return thing.PersistedHash,err	
 }
 
+func (dc * datacrypt) LookupPersisted(hash FileHash) error{
+	err := dc.dbGet([]byte("filehashes"), hash.ToBytes(), nil)
+	return err
+}
+
+func (dc * datacrypt) MarkPersisted(hash FileHash){
+	err := dc.dbPut([]byte("filehashes"), hash.ToBytes(), nil)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	if file.IsDirectory {
 		panic("Directories cannot be persisted")
@@ -47,15 +58,16 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	if err != nil {
 		return FileHash{}, err
 	}
-
-	hasher := fnv.New128()
-	if _, err := io.Copy(hasher, readfilestr); err != nil {
-		panic(err)
-	}
 	fileid, err := dc.GetPersistId(file)
 	if err != nil {
 		panic(err)
 	}
+	
+	hasher := fnv.New128()
+	if _, err := io.Copy(hasher, readfilestr); err != nil {
+		panic(err)
+	}
+	
 	hsh := hasher.Sum(nil)
 
 	var fhash [16]byte
@@ -63,16 +75,17 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	copy(fhash[:], hsh)
 	
 	chash,err := dc.FilePersisted(fileid)
-	if bytes.Equal(hsh, chash.Hash[:]) {
+	newhash := FileHash { Hash: fhash, Size: file.Size}
+	if newhash == chash {
 		return chash,nil
 	}
-	 
 	readfilestr.Seek(0, 0)
 
 	outFile := filepath.Join(dc.commitFolder, baseenc.StdEncoding.EncodeToString(hsh))
 	f, err := os.OpenFile(outFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	
 	if err != nil {
+		
 		return FileHash{}, err
 	}
 	
@@ -87,10 +100,10 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 	os.Truncate(outFile, written)
 
 	
-	p := Persisted {Exists: true, PersistedHash: FileHash { Hash: fhash}}
+	p := Persisted {Exists: true, PersistedHash: newhash}
 	dc.dbPut([]byte("files"), fileid.ID[:16], p)
-	
-	return FileHash{ Hash: fhash }, nil
+	dc.MarkPersisted(p.PersistedHash)
+	return p.PersistedHash, nil
 }
 
 func (dc * datacrypt) SetFileLet(fileid FileId, let FileLet) error{
