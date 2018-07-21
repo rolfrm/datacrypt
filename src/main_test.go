@@ -87,17 +87,6 @@ func TestDataCrypt(t *testing.T){
 
 		t.Log("Got:", x2)
 	}
-	val := 1234
-	dc2.dbEnsureBucket([]byte("thing"))
-	dc2.dbPut([]byte("thing"), []byte("asd"), val);
-	val = 1
-	err := dc2.dbGet([]byte("thing"), []byte("asd"), &val);
-	if err != nil {
-		panic(err)
-	}
-	if val != 1234 {
-		t.Errorf("Unable to deserialize correctly 1234 == %v", val)
-	}
 	scan := scanDirectory("data_test");
 	for x := range(scan) {
 		relFolder,_ := filepath.Rel(dc2.dataFolder, x.Folder);

@@ -16,7 +16,7 @@ type Persisted struct {
 func (dc * datacrypt) GetPersistId(file FileData) (FileId, error){
 	id := file.getFileId(dc)
 	var thing Persisted 
-	err := dc.dbGet([]byte("files"), id.ID[:16], &thing)
+	err := dc.Files.Get(id.ID[:16], &thing)
 	return id,err
 }
 
@@ -24,7 +24,7 @@ func (dc * datacrypt) GenPersistId(file FileData) FileId {
 	id := file.getFileId(dc)
 	var thing Persisted
 	thing.Exists = false
-	err := dc.dbPut([]byte("files"), id.ID[:16], thing)
+	err := dc.Files.Put(id.ID[:16], thing)
 	if err != nil {
 		panic(err)
 	}
@@ -33,17 +33,17 @@ func (dc * datacrypt) GenPersistId(file FileData) FileId {
 
 func (dc * datacrypt) FilePersisted(id FileId) (FileHash, error){
 	var thing Persisted 
-	err := dc.dbGet([]byte("files"), id.ID[:16], &thing)
+	err := dc.Files.Get(id.ID[:16], &thing)
 	return thing.PersistedHash,err	
 }
 
 func (dc * datacrypt) LookupPersisted(hash FileHash) error{
-	err := dc.dbGet([]byte("filehashes"), hash.ToBytes(), nil)
+	err := dc.FileHashes.Get(hash.ToBytes(), nil)
 	return err
 }
 
 func (dc * datacrypt) MarkPersisted(hash FileHash){
-	err := dc.dbPut([]byte("filehashes"), hash.ToBytes(), nil)
+	err := dc.FileHashes.Put(hash.ToBytes(), nil)
 	if err != nil {
 		panic(err)
 	}
@@ -101,24 +101,24 @@ func (dc * datacrypt) PersistData(file FileData) (FileHash, error){
 
 	
 	p := Persisted {Exists: true, PersistedHash: newhash}
-	dc.dbPut([]byte("files"), fileid.ID[:16], p)
+	dc.Files.Put(fileid.ID[:16], p)
 	dc.MarkPersisted(p.PersistedHash)
 	return p.PersistedHash, nil
 }
 
 func (dc * datacrypt) SetFileLet(fileid FileId, let FileLet) error{
-	return dc.dbPut([]byte("lets"), fileid.ID[:16], let)
+	return dc.Lets.Put(fileid.ID[:16], let)
 }
 
 func (dc * datacrypt) GetFileLet(fileid FileId) (FileLet,error) {
 	var f FileLet
-	err := dc.dbGet([]byte("lets"), fileid.ID[:16], &f)
+	err := dc.Lets.Get(fileid.ID[:16], &f)
 	return f,err
 }
 
 func (dc * datacrypt) GetChangeHash(f FileId) ChangeHash {
 	var ch ChangeHash
-	err := dc.dbGet([]byte("change"), f.ID[:], &ch)
+	err := dc.Change.Get(f.ID[:], &ch)
 	if err != nil{
 		return ChangeHash{}
 	}
@@ -127,7 +127,7 @@ func (dc * datacrypt) GetChangeHash(f FileId) ChangeHash {
 
 func (dc * datacrypt) FileDeleted(f FileId) bool {
 	var p Persisted
-	err := dc.dbGet([]byte("files"), f.ID[:], &p)
+	err := dc.Files.Get(f.ID[:], &p)
 	if err != nil {
 		return false
 	}
@@ -141,7 +141,7 @@ func (dc * datacrypt) FileExists(file FileData) bool{
 
 func (dc * datacrypt) PushCommit(change ChangeData){
 	newhash := change.Hash()
-	err := dc.dbPut([]byte("change"), change.ID.ID[:], newhash);
+	err := dc.Change.Put(change.ID.ID[:], newhash);
 	if err != nil {
 		panic(err)
 	}
