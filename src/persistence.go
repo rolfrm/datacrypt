@@ -47,8 +47,7 @@ type Change interface {
 
 }
 
-
-func ChangeDataHash(data ChangeData) ChangeHash {
+func (data * ChangeData)Hash() ChangeHash {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 	enc.Encode(data)

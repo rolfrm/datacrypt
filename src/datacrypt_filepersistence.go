@@ -115,3 +115,34 @@ func (dc * datacrypt) GetFileLet(fileid FileId) (FileLet,error) {
 	err := dc.dbGet([]byte("lets"), fileid.ID[:16], &f)
 	return f,err
 }
+
+func (dc * datacrypt) GetChangeHash(f FileId) ChangeHash {
+	var ch ChangeHash
+	err := dc.dbGet([]byte("change"), f.ID[:], &ch)
+	if err != nil{
+		return ChangeHash{}
+	}
+	return ch
+}
+
+func (dc * datacrypt) FileDeleted(f FileId) bool {
+	var p Persisted
+	err := dc.dbGet([]byte("files"), f.ID[:], &p)
+	if err != nil {
+		return false
+	}
+	return p.Exists == false
+}
+
+func (dc * datacrypt) FileExists(file FileData) bool{
+	filepath := filepath.Join(dc.dataFolder, file.Folder, file.Name);
+	return fileExists(filepath)
+}
+
+func (dc * datacrypt) PushCommit(change ChangeData){
+	newhash := change.Hash()
+	err := dc.dbPut([]byte("change"), change.ID.ID[:], newhash);
+	if err != nil {
+		panic(err)
+	}
+}

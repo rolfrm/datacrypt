@@ -264,6 +264,8 @@ func dataCryptInitialize(dc * datacrypt){
 
 	dc.dbEnsureBucket([]byte("files"))
 	dc.dbEnsureBucket([]byte("filehashes"))
+	dc.dbEnsureBucket([]byte("lets"))
+	dc.dbEnsureBucket([]byte("change"))
 	
 	localNameFile := filepath.Join(dc.localFolder, "machine");
 	if !fileExists(localNameFile) {
