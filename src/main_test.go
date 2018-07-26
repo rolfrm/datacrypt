@@ -13,6 +13,7 @@ import "github.com/boltdb/bolt"
 import "encoding/json"
 import "path/filepath"
 import "time"
+import "fmt"
 func Test1(t *testing.T){
 	
 	file := "testfile"
@@ -44,8 +45,23 @@ func TestDataCrypt(t *testing.T){
 	iou.WriteFile("data_test/test2", make([]byte, 20), 0777)
 	iou.WriteFile("data_test/test_dir/test3", make([]byte, 30), 0777)
 
-	fs := FswatchInit("data_test");
-	FswatchPoll(fs)
+	chn := make(chan INotifyEvent, 10)
+	fmt.Println("GOGOGOG ...")
+	
+	go func(){
+		fs := FswatchInit("data_test");
+	
+		t.Log("GOGOGOG ...")
+		for x := 0; x < 1000; x++ {
+			t.Log("OK...\n", x)
+			FswatchPoll(fs, chn)
+		}
+	}()
+	for evt := range chn {
+		fmt.Println(evt)
+	}
+
+	
 	return;
 	
 	fd := getFileData("data_test/test1");
