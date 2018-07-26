@@ -12,6 +12,7 @@ import "bytes"
 import "github.com/boltdb/bolt"
 import "encoding/json"
 import "path/filepath"
+import "time"
 func Test1(t *testing.T){
 	
 	file := "testfile"
@@ -32,6 +33,7 @@ func Test1(t *testing.T){
 }
 
 func TestDataCrypt(t *testing.T){
+
 	os.RemoveAll("data_test");
 	os.RemoveAll("data_test_commits");
 	
@@ -42,6 +44,10 @@ func TestDataCrypt(t *testing.T){
 	iou.WriteFile("data_test/test2", make([]byte, 20), 0777)
 	iou.WriteFile("data_test/test_dir/test3", make([]byte, 30), 0777)
 
+	fs := FswatchInit("data_test");
+	FswatchPoll(fs)
+	return;
+	
 	fd := getFileData("data_test/test1");
 	if fd.Size != 10 {
 		t.Errorf("unexpected size of data %d", fd.Size);
@@ -132,7 +138,7 @@ func TestDataCrypt(t *testing.T){
 
 		
 	}
-	
+	time.Sleep(100000 * time.Millisecond)
 	
 	dataCryptClose(dc2);
 	os.RemoveAll(dc2.localFolder)

@@ -313,15 +313,16 @@ func dataCryptInitialize(dc *datacrypt) {
 		for true{
 			select {
 			case evt := <- dc.watcher.Events:
+				//fmt.Println(">>", evt)
 				if evt.Op != fsnotify.Remove && evt.Op != 0{
-					fmt.Println(">>", evt)
+
 					
 					fmt.Println("Register");
 					dataCryptRegister(dc, path2FileData(evt.Name))
 					fmt.Println("Register Done")
 				}
 			case err := <- dc.watcher.Errors:
-				//panic(err)
+
 				if err != nil {
 					fmt.Println("Got error ", err)
 				}
