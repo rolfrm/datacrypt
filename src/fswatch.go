@@ -18,9 +18,11 @@ import "C"
 import "unsafe"
 import "fmt"
 import "encoding/binary"
-
+import "time"
 type FsConfig struct{
 	fd _Ctype_int
+	wd2dir map[int32]string
+	dir2wd map[string]int32
 }
 
 //struct inotify_event {
@@ -38,6 +40,7 @@ type INotifyEvent struct {
 	mask uint32
 	cookie uint32
 	name string
+	folder string
 }
 
 func (evt INotifyEvent) IsDir() bool {
@@ -87,23 +90,49 @@ func (evt INotifyEvent) String() string{
 		action = "delete self"
 	}
 	
-	return fmt.Sprintf("%v %s %s: %s ", evt.wd, tp, action, evt.name) 
+	return fmt.Sprintf("%v %s %s: (%s/)%s  ", evt.wd, tp, action, evt.folder, evt.name) 
 
 }
 
 func FswatchInit(str string) FsConfig{
 	C.fswatch_init();
 	fd := C.inotify_init1(0);
+	cfg := FsConfig{fd: fd}
+	cfg.wd2dir = make(map[int32]string)
+	cfg.dir2wd = make(map[string]int32)
+
+	cfg.Add(str)
+	return cfg;
+}
+
+func (fs * FsConfig) Add(str string) {
+	
+	_,ok := fs.dir2wd[str]
+	fmt.Println(str, ok)
+	if ok {
+		return;
+	}
 	cstr:= C.CString(str)
-	wd := C.inotify_add_watch(fd,cstr , C.IN_MODIFY | C.IN_CREATE | C.IN_DELETE | C.IN_DELETE_SELF | C.IN_MOVE_SELF | C.IN_MOVED_FROM | C.IN_MOVED_TO)
+	wd := C.inotify_add_watch(fs.fd,cstr , C.IN_MODIFY | C.IN_CREATE | C.IN_DELETE | C.IN_DELETE_SELF | C.IN_MOVE_SELF | C.IN_MOVED_FROM | C.IN_MOVED_TO | C.IN_MASK_ADD)
 	C.free(unsafe.Pointer(cstr))
-	fmt.Println("watch descriptor", wd)
-	return FsConfig{fd: fd}
+	_,ok = fs.wd2dir[int32(wd)]
+	if ok {
+		fmt.Println("try again...");
+		time.Sleep(time.Millisecond * 10)
+		go fs.Add(str)
+		return;
+	}
+	fs.dir2wd[str] = int32(wd)
+	fs.wd2dir[int32(wd)] = str
+	fmt.Println("Created: ", wd)
+
 }
 
 
 func FswatchPoll(fs FsConfig, stream chan INotifyEvent){
 	var bytes [350]byte;
+	read2 := C.read(fs.fd, unsafe.Pointer(&bytes[0]), 0);
+	fmt.Println(read2)
 	read := C.read(fs.fd,unsafe.Pointer(&bytes[0]) , 350);
 	fmt.Println(read);
 	if(read < 0){
@@ -122,7 +151,8 @@ func FswatchPoll(fs FsConfig, stream chan INotifyEvent){
 		slice = slice[4:]
 		name := string(slice[:length])
 		slice = slice[length:]
-		thing := INotifyEvent{ wd: int(wd), mask: mask, cookie: cookie, name : name}
+		thing := INotifyEvent{ wd: int(wd), mask: mask, cookie: cookie, name : name,
+			folder: fs.wd2dir[int32(wd)]}
 		stream <-  thing
 		
 	}

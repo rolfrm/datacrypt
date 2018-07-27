@@ -47,10 +47,10 @@ func TestDataCrypt(t *testing.T){
 
 	chn := make(chan INotifyEvent, 10)
 	fmt.Println("GOGOGOG ...")
+	fs := FswatchInit("data_test");
 	
 	go func(){
-		fs := FswatchInit("data_test");
-	
+		
 		t.Log("GOGOGOG ...")
 		for x := 0; x < 1000; x++ {
 			t.Log("OK...\n", x)
@@ -58,6 +58,11 @@ func TestDataCrypt(t *testing.T){
 		}
 	}()
 	for evt := range chn {
+		if evt.IsDir(){
+			name, _ := filepath.Abs(filepath.Join(evt.folder, evt.name, "/"))
+			fmt.Println("Adding ", name)
+			fs.Add(name);
+		}
 		fmt.Println(evt)
 	}
 
