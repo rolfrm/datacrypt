@@ -12,6 +12,9 @@ import "bytes"
 import "github.com/boltdb/bolt"
 import "encoding/json"
 import "path/filepath"
+import "time"
+import "fmt"
+
 func Test1(t *testing.T){
 	
 	file := "testfile"
@@ -31,17 +34,109 @@ func Test1(t *testing.T){
 	}
 }
 
-func TestDataCrypt(t *testing.T){
-	os.RemoveAll("data_test");
-	os.RemoveAll("data_test_commits");
+func TestFsNotify(t * testing.T){
+	os.RemoveAll("data_test2");
+	os.RemoveAll("data_test2_commits");
 	
-	os.Mkdir("data_test", 0777);
-	os.Mkdir("data_test/test_dir", 0777);
-	os.Mkdir("data_test_commits", 0777);
-	iou.WriteFile("data_test/test1", make([]byte, 10), 0777)
-	iou.WriteFile("data_test/test2", make([]byte, 20), 0777)
-	iou.WriteFile("data_test/test_dir/test3", make([]byte, 30), 0777)
+	os.Mkdir("data_test2", 0777);
+	os.Mkdir("data_test2/test_dir", 0777);
+	os.Mkdir("data_test2/test_dir/test", 0777);
+	os.Mkdir("data_test2_commits", 0777);
+	iou.WriteFile("data_test2/test1", make([]byte, 10), 0777)
+	iou.WriteFile("data_test2/test2", make([]byte, 20), 0777)
+	iou.WriteFile("data_test2/test_dir/test3", make([]byte, 30), 0777)
 
+	fs := FswatchInit();
+	fs.Add("data_test2");
+	fs.Add("data_test2/test_dir");
+	fs.Add("data_test2/test_dir/test");
+
+	awaitDir := func(dir string){
+		
+		os.Mkdir(dir, 0777);
+		for {
+			select {
+			case evt := <-fs.Events:
+				if evt.IsDir() && strings.Compare(evt.Path() , dir) == 0 {
+					fs.Add(evt.Path())
+					return;
+				}
+			case <- time.After(1 * time.Second):
+				panic("Timed out")
+			}
+		}
+	}
+	
+	awaitRm := func(dir string){
+		
+		os.RemoveAll(dir);
+		for {
+			select {
+			case evt := <-fs.Events:
+				fmt.Println(evt, evt.IsDeleteSelf(), strings.Compare(evt.Path() , dir), evt.IsDir())
+				if evt.IsDeleteSelf() {
+				
+					fs.Remove(evt.Path())
+				}
+				if evt.IsDeleteSelf() && strings.Compare(evt.Path() , dir) == 0 {
+					return;
+				}
+			case <- time.After(1 * time.Second):
+				panic("Timed out")
+			}
+		}
+
+	}
+
+	awaitWrite := func(file string, bytes int){
+		fmt.Println("Written...")
+		b := make([]byte, bytes)
+		iou.WriteFile(file, b, 0777)
+		created,modified := false,false
+		for created == false || modified == false{
+			select {
+			case evt := <-fs.Events:
+				fmt.Println(evt)
+				if evt.IsCreate() {
+					created = true
+				}
+				if evt.IsModify() {
+					modified = true
+				}
+				
+			case <- time.After(1 * time.Second):
+				panic("Timed out")
+			}
+		}		
+	}
+	
+	awaitDir("data_test2/test_dir/a")
+	awaitDir("data_test2/test_dir/b")
+	awaitDir("data_test2/test_dir/b/a")
+	awaitDir("data_test2/test_dir/b/a/c")
+	awaitDir("data_test2/test_dir/b/a/c/aaaaaaaaa")
+	awaitDir("data_test2/test_dir/b/a/c/bbbbbbb")
+	awaitWrite("data_test2/test_dir/b/a/asd", 10)
+	awaitRm("data_test2/test_dir/b/a")
+	fmt.Println("AUTOREMOVE")
+	fs.AutoRemove = true
+	os.RemoveAll("data_test2/test_dir")
+	for fs.Count() > 1{
+		select {
+		case evt := <-fs.Events:
+			fmt.Println(evt)
+			
+		case <- time.After(10 * time.Millisecond):
+			continue;
+		}
+	}
+			
+	fmt.Println("DONE!!")
+}
+
+func TestDataCrypt(t *testing.T){
+
+	
 	fd := getFileData("data_test/test1");
 	if fd.Size != 10 {
 		t.Errorf("unexpected size of data %d", fd.Size);
@@ -133,12 +228,9 @@ func TestDataCrypt(t *testing.T){
 		
 	}
 	
-	
 	dataCryptClose(dc2);
 	os.RemoveAll(dc2.localFolder)
-	//if test.initialized == false {
-	//	t.Errorf("this should be initialized")
-	//}
+	
 }
 
 
