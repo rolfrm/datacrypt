@@ -46,7 +46,7 @@ func TestFsNotify(t * testing.T){
 	iou.WriteFile("data_test2/test2", make([]byte, 20), 0777)
 	iou.WriteFile("data_test2/test_dir/test3", make([]byte, 30), 0777)
 
-	fs := FswatchInit();
+	fs := FsWatchInit();
 	fs.Add("data_test2");
 	fs.Add("data_test2/test_dir");
 	fs.Add("data_test2/test_dir/test");

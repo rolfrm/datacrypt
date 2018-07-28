@@ -109,7 +109,7 @@ func (evt INotifyEvent) String() string{
 
 }
 
-func FswatchInit() * FsConfig{
+func FsWatchInit() * FsConfig{
 	
 	fd := C.inotify_init1(0);
 	cfg := FsConfig{fd: fd}

@@ -17,7 +17,6 @@ import "bytes"
 import _ "compress/lzw"
 import _ "crypto/aes"
 import _ "crypto/cipher" // encrypt/decrypt
-import "github.com/fsnotify/fsnotify"
 
 
 func printHelp() {
@@ -80,10 +79,9 @@ type datacrypt struct {
 	FileHashes DBSec
 	Lets DBSec
 	Change DBSec
-
-	watcher *fsnotify.Watcher
-	watchers map[string]bool
-	watchers_end chan bool
+	
+	fileWatch * FsConfig
+	ended chan bool
 }
 
 func (dc *datacrypt) createSec(name string) DBSec{
@@ -268,15 +266,7 @@ func dataCryptRegister(dc *datacrypt, thing FileData) {
 	// thing does not exist in db, or only old version exists
 	getFileUpdates(dc, thing)
 	if thing.IsDirectory {
-		val,ok := dc.watchers[fullname]
-		if !ok && !val {
-			dc.watchers[fullname] = true
-			fmt.Println("Adding", fullname)
-			err := dc.watcher.Add(fullname)
-			if err != nil {
-				panic(err)
-			}
-		}
+		dc.fileWatch.Add(fullname)
 	}
 	
 
@@ -292,10 +282,9 @@ func dataCryptInitialize(dc *datacrypt) {
 	dc.FileHashes = dc.createSec("filehashes")
 	dc.Lets = dc.createSec("lets")
 	dc.Change = dc.createSec("change")
-	dc.watcher, err = fsnotify.NewWatcher()
-	dc.watchers = make(map[string]bool)
-	dc.watchers_end = make(chan bool)
-	
+	dc.fileWatch = FsWatchInit()
+	dc.ended = make(chan bool)
+	dc.fileWatch.AutoRemove = true
 	localNameFile := filepath.Join(dc.localFolder, "machine")
 	if !fileExists(localNameFile) {
 		dc.localName = createUid()
@@ -307,41 +296,32 @@ func dataCryptInitialize(dc *datacrypt) {
 
 	for fd := range scanDirectory(dc.dataFolder) {
 		dataCryptRegister(dc, fd)
+		if fd.IsDirectory {
+			dc.fileWatch.Add(filepath.Join(fd.Folder,fd.Name))
+		}
 	}
 
 	go func (){
-		for true{
+		for {
 			select {
-			case evt := <- dc.watcher.Events:
-				//fmt.Println(">>", evt)
-				if evt.Op != fsnotify.Remove && evt.Op != 0{
-
-					
-					fmt.Println("Register");
-					dataCryptRegister(dc, path2FileData(evt.Name))
-					fmt.Println("Register Done")
+			case evt := <-dc.fileWatch.Events:
+				if evt.IsDir() {
+					dc.fileWatch.Add(evt.Path())
 				}
-			case err := <- dc.watcher.Errors:
-
-				if err != nil {
-					fmt.Println("Got error ", err)
-				}
-			case _ = <-dc.watchers_end:
-				fmt.Println("Got end ", err)
-				dc.watcher.Close()
-				dc.watchers_end<- true
-				
-				break;
+				fd := path2FileData(evt.Path())
+				dataCryptRegister(dc, fd)
+			case <-dc.ended:
+				dc.ended<- true
+				return
 			}
 		}
 	}()
-	dc.watcher.Add(dc.dataFolder)
+	dc.fileWatch.Add(dc.dataFolder)
 }
 
 func dataCryptClose(dc *datacrypt) {
-	dc.watchers_end<- true
-	_ = <-dc.watchers_end
-	
+	dc.ended<- true
+	<-dc.ended
 	dc.db.Close()
 	
 }
@@ -381,5 +361,8 @@ func main() {
 	}
 	dc := NewDataCrypt(args[0], args[1], args[2])
 	fmt.Println(dc)
+	for {
 
+		time.Sleep(100 * time.Millisecond)
+	}
 }
