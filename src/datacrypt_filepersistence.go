@@ -6,6 +6,7 @@ import (
 	"os"
 	"io"
 	baseenc "encoding/base32"
+	"encoding/gob"
 )
 
 type Persisted struct {
@@ -145,4 +146,12 @@ func (dc * datacrypt) PushCommit(change ChangeData){
 	if err != nil {
 		panic(err)
 	}
+	outFile := filepath.Join(dc.commitFolder, baseenc.StdEncoding.EncodeToString(change.ID.ID[:]))	
+	f,err := os.OpenFile(outFile, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0777)
+	if err != nil {
+		panic(err)
+	}
+	enc := gob.NewEncoder(f)
+	enc.Encode(change)
+	f.Close()
 }
